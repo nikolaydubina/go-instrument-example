@@ -1,1 +1,1 @@
-# go-instrument-example
+Example http server to illustrate [go-instrument](https://github.com/nikolaydubina/go-instrument) with Datadog and OpenTelemetry integration.
