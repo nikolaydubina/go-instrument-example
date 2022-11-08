@@ -27,6 +27,14 @@ import (
 	"github.com/nikolaydubina/go-instrument-example/treemap/render"
 )
 
+var (
+	tracer = otel.GetTracerProvider().Tracer(
+		"github.com/nikolaydubina/go-instrument-example",
+		trace.WithInstrumentationVersion("v0.1.0"),
+		trace.WithSchemaURL(semconv.SchemaURL),
+	)
+)
+
 var grey = color.RGBA{128, 128, 128, 255}
 
 func makeCover(ctx context.Context, width float64, height float64, in io.Reader, out io.Writer) error {
@@ -99,17 +107,13 @@ func coverHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var (
-	tracer = otel.GetTracerProvider().Tracer(
-		"github.com/nikolaydubina/go-instrument-example",
-		trace.WithInstrumentationVersion("v0.1.0"),
-		trace.WithSchemaURL(semconv.SchemaURL),
-	)
-)
-
 func main() {
-	client := otlptracehttp.NewClient()
-	exporter, err := otlptrace.New(context.Background(), client)
+	exporter, err := otlptrace.New(
+		context.Background(),
+		otlptracehttp.NewClient(
+			otlptracehttp.WithInsecure(),
+		),
+	)
 	if err != nil {
 		panic(err)
 	}
