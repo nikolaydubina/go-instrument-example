@@ -7,6 +7,7 @@ import (
 	"image/color"
 	"io"
 	"net/http"
+	"log"
 	"strconv"
 
 	"github.com/go-chi/chi"
@@ -100,5 +101,5 @@ func main() {
 
 	router.Post("/cover", coverHandler)
 
-	http.ListenAndServe(":80", router)
+	log.Fatal(http.ListenAndServe(":8080", router))
 }
