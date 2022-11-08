@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"image/color"
 	"io"
-	"net/http"
 	"log"
+	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi"
@@ -90,7 +90,11 @@ func coverHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	tracer.Start()
+	tracer.Start(
+		tracer.WithServiceName("go_cover_http_server"),
+		tracer.WithEnv("prod"),
+		tracer.WithSamplingRules([]tracer.SamplingRule{tracer.RateRule(1)}),
+	)
 	defer tracer.Stop()
 
 	router := chi.NewRouter()
