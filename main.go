@@ -10,11 +10,17 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	chirender "github.com/go-chi/render"
+	"github.com/riandyrn/otelchi"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/tools/cover"
-	chitrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/go-chi/chi"
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	"github.com/nikolaydubina/go-instrument-example/go-cover-treemap/covertreemap"
 	"github.com/nikolaydubina/go-instrument-example/treemap"
@@ -24,6 +30,10 @@ import (
 var grey = color.RGBA{128, 128, 128, 255}
 
 func makeCover(ctx context.Context, width float64, height float64, in io.Reader, out io.Writer) error {
+	// manual instrumentation
+	_, span := tracer.Start(ctx, "makeCover")
+	defer span.End()
+
 	profiles, err := cover.ParseProfilesFromReader(in)
 	if err != nil {
 		return fmt.Errorf("can not parse file: %w", err)
@@ -89,18 +99,36 @@ func coverHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func main() {
-	tracer.Start(
-		tracer.WithServiceName("go_cover_http_server"),
-		tracer.WithEnv("prod"),
-		tracer.WithSamplingRules([]tracer.SamplingRule{tracer.RateRule(1)}),
+var (
+	tracer = otel.GetTracerProvider().Tracer(
+		"github.com/nikolaydubina/go-instrument-example",
+		trace.WithInstrumentationVersion("v0.1.0"),
+		trace.WithSchemaURL(semconv.SchemaURL),
 	)
-	defer tracer.Stop()
+)
+
+func main() {
+	client := otlptracehttp.NewClient()
+	exporter, err := otlptrace.New(context.Background(), client)
+	if err != nil {
+		panic(err)
+	}
+
+	tracerProvider := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String("go_cover_http_server"),
+			semconv.ServiceVersionKey.String("0.0.1"),
+		)),
+	)
+	otel.SetTracerProvider(tracerProvider)
+	defer tracerProvider.Shutdown(context.Background())
 
 	router := chi.NewRouter()
 
 	router.Use(
-		chitrace.Middleware(chitrace.WithServiceName("go_cover_http_server")),
+		otelchi.Middleware("go_cover_http_server", otelchi.WithChiRoutes(router)),
 	)
 
 	router.Post("/cover", coverHandler)
