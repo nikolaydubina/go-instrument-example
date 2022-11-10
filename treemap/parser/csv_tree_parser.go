@@ -11,14 +11,21 @@ import (
 	"strings"
 
 	"github.com/nikolaydubina/go-instrument-example/treemap"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 )
 
-// if duplicates, then sum size
-// if duplicates, then max heat
-// TODO: policies for duplicates
 type CSVTreeParser struct{}
 
 func (s CSVTreeParser) ParseString(ctx context.Context, in string) (tree *treemap.Tree, err error) {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "CSVTreeParser.ParseString")
+	defer span.End()
+	defer func() {
+		if err != nil {
+			span.SetStatus(codes.Error, "error")
+			span.RecordError(err)
+		}
+	}()
 	nodes, err := parseNodes(ctx, in)
 	if err != nil {
 		return nil, fmt.Errorf("can not parse nodes: %w", err)
@@ -33,6 +40,14 @@ func (s CSVTreeParser) ParseString(ctx context.Context, in string) (tree *treema
 }
 
 func parseNodes(ctx context.Context, in string) (node []treemap.Node, err error) {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "parseNodes")
+	defer span.End()
+	defer func() {
+		if err != nil {
+			span.SetStatus(codes.Error, "error")
+			span.RecordError(err)
+		}
+	}()
 	var nodes []treemap.Node
 	r := csv.NewReader(strings.NewReader(in))
 	for {
@@ -72,25 +87,24 @@ func parseNodes(ctx context.Context, in string) (node []treemap.Node, err error)
 	return nodes, nil
 }
 
-// If node is in path, but not present, then it will be in To but not will have entry in Nodes.
-// This is not terribly efficient, but should do its job for small graphs.
 func makeTree(ctx context.Context, nodes []treemap.Node) (*treemap.Tree, error) {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "makeTree")
+	defer span.End()
 	tree := treemap.Tree{
-		Nodes: map[string]treemap.Node{},
-		To:    map[string][]string{},
+		Nodes:	map[string]treemap.Node{},
+		To:	map[string][]string{},
 	}
 
-	// for finding roots
 	hasParent := map[string]bool{}
 
 	for _, node := range nodes {
 		if existingNode, ok := tree.Nodes[node.Path]; ok {
 			tree.Nodes[node.Path] = treemap.Node{
-				Path:    existingNode.Path,
-				Name:    existingNode.Name,
-				Size:    existingNode.Size + node.Size,
-				Heat:    math.Max(existingNode.Heat, node.Heat),
-				HasHeat: existingNode.HasHeat || node.HasHeat,
+				Path:		existingNode.Path,
+				Name:		existingNode.Name,
+				Size:		existingNode.Size + node.Size,
+				Heat:		math.Max(existingNode.Heat, node.Heat),
+				HasHeat:	existingNode.HasHeat || node.HasHeat,
 			}
 		}
 		tree.Nodes[node.Path] = node
@@ -103,8 +117,8 @@ func makeTree(ctx context.Context, nodes []treemap.Node) (*treemap.Tree, error) 
 
 			if _, ok := tree.Nodes[parent]; !ok {
 				tree.Nodes[parent] = treemap.Node{
-					Path:    parent,
-					HasHeat: false,
+					Path:		parent,
+					HasHeat:	false,
 				}
 			}
 			tree.To[parent] = append(tree.To[parent], child)

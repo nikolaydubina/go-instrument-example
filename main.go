@@ -16,6 +16,7 @@ import (
 	"github.com/riandyrn/otelchi"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -30,6 +31,14 @@ import (
 var grey = color.RGBA{128, 128, 128, 255}
 
 func makeCover(ctx context.Context, width float64, height float64, in io.Reader, out io.Writer) (err error) {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "makeCover")
+	defer span.End()
+	defer func() {
+		if err != nil {
+			span.SetStatus(codes.Error, "error")
+			span.RecordError(err)
+		}
+	}()
 	profiles, err := cover.ParseProfilesFromReader(in)
 	if err != nil {
 		return fmt.Errorf("can not parse file: %w", err)
@@ -54,8 +63,8 @@ func makeCover(ctx context.Context, width float64, height float64, in io.Reader,
 		return errors.New("can not get palette")
 	}
 	uiBuilder := render.UITreeMapBuilder{
-		Colorer:     render.HeatColorer{Palette: palette},
-		BorderColor: grey,
+		Colorer:	render.HeatColorer{Palette: palette},
+		BorderColor:	grey,
 	}
 	spec := uiBuilder.NewUITreeMap(ctx, *tree, width, height, 4, 4, 16)
 	renderer := render.SVGRenderer{}
@@ -96,6 +105,14 @@ func coverHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func fib(ctx context.Context, n int, makeErr bool) (v int, err error) {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "fib")
+	defer span.End()
+	defer func() {
+		if err != nil {
+			span.SetStatus(codes.Error, "error")
+			span.RecordError(err)
+		}
+	}()
 	if n == 0 || n == 1 {
 		return 1, nil
 	}

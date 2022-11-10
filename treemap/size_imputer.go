@@ -3,18 +3,22 @@ package treemap
 import (
 	"context"
 	"strings"
+	"go.opentelemetry.io/otel"
 )
 
-// SumSizeImputer will set sum of children into empty parents and fill children with contant.
 type SumSizeImputer struct {
 	EmptyLeafSize float64
 }
 
 func (s SumSizeImputer) ImputeSize(ctx context.Context, t Tree) {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "SumSizeImputer.ImputeSize")
+	defer span.End()
 	s.ImputeSizeNode(ctx, t, t.Root)
 }
 
 func (s SumSizeImputer) ImputeSizeNode(ctx context.Context, t Tree, node string) {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "SumSizeImputer.ImputeSizeNode")
+	defer span.End()
 	var sum float64
 	for _, child := range t.To[node] {
 		s.ImputeSizeNode(ctx, t, child)
@@ -33,9 +37,9 @@ func (s SumSizeImputer) ImputeSizeNode(ctx context.Context, t Tree, node string)
 		}
 
 		t.Nodes[node] = Node{
-			Path: node,
-			Name: name,
-			Size: v,
+			Path:	node,
+			Name:	name,
+			Size:	v,
 		}
 	}
 }

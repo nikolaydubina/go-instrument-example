@@ -1,17 +1,23 @@
 package treemap
 
-import "context"
+import (
+	"context"
+	"go.opentelemetry.io/otel"
+)
 
-// WeightedHeatImputer will make color of parent to weighted sum of colors of its children.
 type WeightedHeatImputer struct {
 	EmptyLeafHeat float64
 }
 
 func (s WeightedHeatImputer) ImputeHeat(ctx context.Context, t Tree) {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "WeightedHeatImputer.ImputeHeat")
+	defer span.End()
 	s.ImputeHeatNode(ctx, t, t.Root)
 }
 
 func (s WeightedHeatImputer) ImputeHeatNode(ctx context.Context, t Tree, node string) {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "WeightedHeatImputer.ImputeHeatNode")
+	defer span.End()
 	var heats []float64
 	var sizes []float64
 
@@ -40,11 +46,11 @@ func (s WeightedHeatImputer) ImputeHeatNode(ctx context.Context, t Tree, node st
 		}
 
 		t.Nodes[node] = Node{
-			Path:    t.Nodes[node].Path,
-			Name:    t.Nodes[node].Name,
-			Size:    t.Nodes[node].Size,
-			Heat:    v,
-			HasHeat: true,
+			Path:		t.Nodes[node].Path,
+			Name:		t.Nodes[node].Name,
+			Size:		t.Nodes[node].Size,
+			Heat:		v,
+			HasHeat:	true,
 		}
 	}
 }

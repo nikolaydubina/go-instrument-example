@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"image/color"
+	"go.opentelemetry.io/otel"
 )
 
 type SVGRenderer struct{}
 
 func (r SVGRenderer) Render(ctx context.Context, root UIBox, w, h float64) []byte {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "SVGRenderer.Render")
+	defer span.End()
 	if !root.IsRoot {
 		return nil
 	}
@@ -39,6 +42,8 @@ func (r SVGRenderer) Render(ctx context.Context, root UIBox, w, h float64) []byt
 }
 
 func BoxSVG(ctx context.Context, q UIBox) string {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "BoxSVG")
+	defer span.End()
 	if q.IsInvisible {
 		return ""
 	}
@@ -75,6 +80,8 @@ func BoxSVG(ctx context.Context, q UIBox) string {
 }
 
 func TextSVG(ctx context.Context, t *UIText) string {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "TextSVG")
+	defer span.End()
 	if t == nil {
 		return ""
 	}

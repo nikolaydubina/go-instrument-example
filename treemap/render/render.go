@@ -5,41 +5,40 @@ import (
 	"image/color"
 
 	"github.com/nikolaydubina/go-instrument-example/treemap"
+	"go.opentelemetry.io/otel"
 	"github.com/nikolaydubina/go-instrument-example/treemap/layout"
 )
 
 const (
-	fontSize             int     = 12
-	textHeightMultiplier float64 = 0.8
-	textWidthMultiplier  float64 = 0.8
-	tooSmallBoxHeight    float64 = 5
-	tooSmallBoxWidth     float64 = 5
-	textMarginH          float64 = 2
+	fontSize		int	= 12
+	textHeightMultiplier	float64	= 0.8
+	textWidthMultiplier	float64	= 0.8
+	tooSmallBoxHeight	float64	= 5
+	tooSmallBoxWidth	float64	= 5
+	textMarginH		float64	= 2
 )
 
-// UIText is spec on how to render text.
 type UIText struct {
-	Text  string
-	X     float64
-	Y     float64
-	H     float64
-	W     float64
-	Scale float64
-	Color color.Color
+	Text	string
+	X	float64
+	Y	float64
+	H	float64
+	W	float64
+	Scale	float64
+	Color	color.Color
 }
 
-// UIBox is spec on how to render a box. Could be Root.
 type UIBox struct {
-	Title       *UIText
-	X           float64
-	Y           float64
-	W           float64
-	H           float64
-	Children    []UIBox
-	IsInvisible bool
-	IsRoot      bool
-	Color       color.Color
-	BorderColor color.Color
+	Title		*UIText
+	X		float64
+	Y		float64
+	W		float64
+	H		float64
+	Children	[]UIBox
+	IsInvisible	bool
+	IsRoot		bool
+	Color		color.Color
+	BorderColor	color.Color
 }
 
 func (f UIBox) IsEmpty() bool {
@@ -52,18 +51,20 @@ type Colorer interface {
 }
 
 type UITreeMapBuilder struct {
-	Colorer     Colorer
-	BorderColor color.Color
+	Colorer		Colorer
+	BorderColor	color.Color
 }
 
 func (s UITreeMapBuilder) NewUITreeMap(ctx context.Context, tree treemap.Tree, w, h, margin, padding, paddingRoot float64) UIBox {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "UITreeMapBuilder.NewUITreeMap")
+	defer span.End()
 	t := UIBox{
-		X:           0 + paddingRoot,
-		Y:           0 + paddingRoot,
-		W:           w - (2 * paddingRoot),
-		H:           h - (2 * paddingRoot),
-		IsInvisible: true,
-		IsRoot:      true,
+		X:		0 + paddingRoot,
+		Y:		0 + paddingRoot,
+		W:		w - (2 * paddingRoot),
+		H:		h - (2 * paddingRoot),
+		IsInvisible:	true,
+		IsRoot:		true,
 	}
 
 	t.Children = []UIBox{
@@ -74,37 +75,38 @@ func (s UITreeMapBuilder) NewUITreeMap(ctx context.Context, tree treemap.Tree, w
 }
 
 func (s UITreeMapBuilder) NewUIBox(ctx context.Context, node string, tree treemap.Tree, x, y, w, h, margin float64, padding float64) UIBox {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "UITreeMapBuilder.NewUIBox")
+	defer span.End()
 	if (w <= (2 * padding)) || (h <= (2 * padding)) || w < tooSmallBoxWidth || h < tooSmallBoxHeight {
-		// too small, do not render
+
 		return UIBox{}
 	}
 
 	t := UIBox{
-		X:           x + margin,
-		Y:           y + margin,
-		W:           w - (2 * margin),
-		H:           h - (2 * margin),
-		Color:       s.Colorer.ColorBox(ctx, tree, node),
-		BorderColor: s.BorderColor,
+		X:		x + margin,
+		Y:		y + margin,
+		W:		w - (2 * margin),
+		H:		h - (2 * margin),
+		Color:		s.Colorer.ColorBox(ctx, tree, node),
+		BorderColor:	s.BorderColor,
 	}
 
 	var textHeight float64
 	if title := tree.Nodes[node].Name; title != "" && title != "some-secret-string" {
-		// fit text
-		// margin here and padding to account for children
+
 		w := t.W - (2 * padding) - (2 * margin)
 		h := t.H - (2 * padding) - (2 * margin) - (2 * textMarginH)
 		if scale, th := fitText(ctx, title, fontSize, w); scale > 0 && th > 0 && th < h {
 			textHeight = th
-			// if enough space for text, then add
+
 			t.Title = &UIText{
-				Text:  title,
-				X:     t.X + padding + margin,
-				Y:     t.Y + padding + textMarginH,
-				W:     w,
-				H:     textHeight,
-				Scale: scale,
-				Color: s.Colorer.ColorText(ctx, tree, node),
+				Text:	title,
+				X:	t.X + padding + margin,
+				Y:	t.Y + padding + textMarginH,
+				W:	w,
+				H:	textHeight,
+				Scale:	scale,
+				Color:	s.Colorer.ColorText(ctx, tree, node),
 			}
 		}
 	}
@@ -119,10 +121,10 @@ func (s UITreeMapBuilder) NewUIBox(ctx context.Context, node string, tree treema
 	}
 
 	childrenContainer := layout.Box{
-		X: t.X + padding,
-		Y: t.Y + padding + textHeight + (2 * textMarginH),
-		W: t.W - (2 * padding),
-		H: t.H - (2 * padding) - textHeight - (2 * textMarginH),
+		X:	t.X + padding,
+		Y:	t.Y + padding + textHeight + (2 * textMarginH),
+		W:	t.W - (2 * padding),
+		H:	t.H - (2 * padding) - textHeight - (2 * textMarginH),
 	}
 	boxes := layout.Squarify(ctx, childrenContainer, areas)
 
@@ -161,8 +163,9 @@ func nodeSize(tree treemap.Tree, node string) float64 {
 	return s
 }
 
-// compute scale to fit worst dimension
 func fitText(ctx context.Context, text string, fontSize int, W float64) (scale float64, h float64) {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "fitText")
+	defer span.End()
 	w := textWidth(text, float64(fontSize))
 	h = textHeight(text, float64(fontSize))
 

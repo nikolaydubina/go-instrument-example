@@ -7,17 +7,14 @@ import (
 	"strings"
 
 	"github.com/nikolaydubina/go-instrument-example/treemap"
+	"go.opentelemetry.io/otel"
 	"golang.org/x/tools/cover"
 )
 
-// CoverageTreemapBuilder creates single treemap tree where each leaf is a file.
-// Heat is test coverage.
-// Size is number of lines.
 type CoverageTreemapBuilder struct {
 	countStatements bool
 }
 
-// NewCoverageTreemapBuilder is constructor.
 func NewCoverageTreemapBuilder(
 	countStatements bool,
 ) CoverageTreemapBuilder {
@@ -26,18 +23,17 @@ func NewCoverageTreemapBuilder(
 	}
 }
 
-// CoverageTreemapFromProfiles from profiles.
-// Note, we should not normalize heat since go coverage already reports 0~100%.
 func (s CoverageTreemapBuilder) CoverageTreemapFromProfiles(ctx context.Context, profiles []*cover.Profile) (*treemap.Tree, error) {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "CoverageTreemapBuilder.CoverageTreemapFromProfiles")
+	defer span.End()
 	if len(profiles) == 0 {
 		return nil, errors.New("no profiles passed")
 	}
 	tree := treemap.Tree{
-		Nodes: map[string]treemap.Node{},
-		To:    map[string][]string{},
+		Nodes:	map[string]treemap.Node{},
+		To:	map[string][]string{},
 	}
 
-	// for finding roots
 	hasParent := map[string]bool{}
 
 	for _, profile := range profiles {
@@ -53,7 +49,7 @@ func (s CoverageTreemapBuilder) CoverageTreemapFromProfiles(ctx context.Context,
 		if s.countStatements {
 			size = numStatements(ctx, profile)
 			if size == 0 {
-				// fallback
+
 				size = 1
 			}
 		}
@@ -62,10 +58,10 @@ func (s CoverageTreemapBuilder) CoverageTreemapFromProfiles(ctx context.Context,
 		hasParent[parts[0]] = false
 
 		tree.Nodes[profile.FileName] = treemap.Node{
-			Path:    profile.FileName,
-			Size:    float64(size),
-			Heat:    percentCovered(ctx, profile),
-			HasHeat: true,
+			Path:		profile.FileName,
+			Size:		float64(size),
+			Heat:		percentCovered(ctx, profile),
+			HasHeat:	true,
 		}
 
 		for parent, i := parts[0], 1; i < len(parts); i++ {
@@ -118,10 +114,9 @@ func unique(a []string) []string {
 	return b
 }
 
-// This is based on official go tool.
-// Returns value in range 0~1
-// Official reference: https://github.com/golang/go/blob/master/src/cmd/cover/html.go#L97
 func percentCovered(ctx context.Context, p *cover.Profile) float64 {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "percentCovered")
+	defer span.End()
 	var total, covered int64
 	for _, b := range p.Blocks {
 		total += int64(b.NumStmt)
@@ -136,6 +131,8 @@ func percentCovered(ctx context.Context, p *cover.Profile) float64 {
 }
 
 func numStatements(ctx context.Context, p *cover.Profile) int {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "numStatements")
+	defer span.End()
 	var total int
 	for _, b := range p.Blocks {
 		total += b.NumStmt

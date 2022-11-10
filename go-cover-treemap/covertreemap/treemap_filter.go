@@ -5,11 +5,12 @@ import (
 	"strings"
 
 	"github.com/nikolaydubina/go-instrument-example/treemap"
+	"go.opentelemetry.io/otel"
 )
 
-// RemoveGoFilesTreemapFilter removes .go files from Treemap.
-// Size and heat of parents have to be already imputed.
 func RemoveGoFilesTreemapFilter(ctx context.Context, tree *treemap.Tree) {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "RemoveGoFilesTreemapFilter")
+	defer span.End()
 	for path := range tree.Nodes {
 		if strings.HasSuffix(path, ".go") {
 			delete(tree.Nodes, path)
@@ -29,10 +30,10 @@ func RemoveGoFilesTreemapFilter(ctx context.Context, tree *treemap.Tree) {
 	}
 }
 
-// AggregateGoFilesTreemapFilter aggregates .go files from Treemap
-// in each parent into single node `*`.
 func AggregateGoFilesTreemapFilter(ctx context.Context, tree *treemap.Tree) {
-	// store coverage statement per aggregated node
+	ctx, span := otel.Tracer("my-service").Start(ctx, "AggregateGoFilesTreemapFilter")
+	defer span.End()
+
 	aggcov := make(map[string]float64)
 
 	for path, node := range tree.Nodes {
@@ -43,7 +44,6 @@ func AggregateGoFilesTreemapFilter(ctx context.Context, tree *treemap.Tree) {
 		parent := parent(path)
 		aggPath := parent + "/" + "*"
 
-		// check if has new node edge
 		hasNewNode := false
 		for _, to := range tree.To[parent] {
 			if to == aggPath {
@@ -55,14 +55,13 @@ func AggregateGoFilesTreemapFilter(ctx context.Context, tree *treemap.Tree) {
 			tree.To[parent] = append(tree.To[parent], aggPath)
 		}
 
-		// update aggregated node values
 		if _, ok := tree.Nodes[aggPath]; !ok {
 			tree.Nodes[aggPath] = treemap.Node{
-				Path:    aggPath,
-				Name:    "*",
-				Size:    0,
-				Heat:    0,
-				HasHeat: true,
+				Path:		aggPath,
+				Name:		"*",
+				Size:		0,
+				Heat:		0,
+				HasHeat:	true,
 			}
 		}
 		aggNode := tree.Nodes[aggPath]
@@ -72,7 +71,6 @@ func AggregateGoFilesTreemapFilter(ctx context.Context, tree *treemap.Tree) {
 		aggcov[aggPath] += node.Size * node.Heat
 	}
 
-	// set heat
 	for aggPath, cov := range aggcov {
 		aggNode := tree.Nodes[aggPath]
 		aggNode.Heat = cov / aggNode.Size
@@ -80,8 +78,9 @@ func AggregateGoFilesTreemapFilter(ctx context.Context, tree *treemap.Tree) {
 	}
 }
 
-// CollapseRootsWithoutNameTreemapFilter collapses roots with single child without updating name of parents.
 func CollapseRootsWithoutNameTreemapFilter(ctx context.Context, tree *treemap.Tree) {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "CollapseRootsWithoutNameTreemapFilter")
+	defer span.End()
 	for path := range tree.Nodes {
 		parent := parent(path)
 		if len(tree.To[parent]) == 1 {

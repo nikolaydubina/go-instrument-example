@@ -9,41 +9,37 @@ import (
 	"strings"
 
 	"github.com/lucasb-eyer/go-colorful"
+	"go.opentelemetry.io/otel"
 )
 
-// This table contains the "keypoints" of the colorgradient you want to generate.
-// The position of each keypoint has to live in the range [0,1]
-// Ths is copied from go-colorful examples!!!
 type ColorfulPalette []struct {
-	Col colorful.Color
-	Pos float64
+	Col	colorful.Color
+	Pos	float64
 }
 
-// This is the meat of the gradient computation. It returns a HCL-blend between
-// the two colors around `t`.
-// Note: It relies heavily on the fact that the gradient keypoints are sorted.
 func (gt ColorfulPalette) GetInterpolatedColorFor(ctx context.Context, t float64) color.Color {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "ColorfulPalette.GetInterpolatedColorFor")
+	defer span.End()
 	for i := 0; i < len(gt)-1; i++ {
 		c1 := gt[i]
 		c2 := gt[i+1]
 		if c1.Pos <= t && t <= c2.Pos {
-			// We are in between c1 and c2. Go blend them!
+
 			t := (t - c1.Pos) / (c2.Pos - c1.Pos)
 			return c1.Col.BlendHcl(c2.Col, t).Clamped()
 		}
 	}
 
-	// Nothing found? Means we're at (or past) the last gradient keypoint.
 	return gt[len(gt)-1].Col
 }
 
-//go:embed palettes/ReBu.csv
 var paletteReBuCSV string
 
-//go:embed palettes/RdYlGn.csv
 var paletteRdYlGnCSV string
 
 func makePaletteFromCSV(ctx context.Context, csv string) ColorfulPalette {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "makePaletteFromCSV")
+	defer span.End()
 	rows := strings.Split(csv, "\n")
 	palette := make(ColorfulPalette, len(rows))
 
@@ -71,6 +67,8 @@ func makePaletteFromCSV(ctx context.Context, csv string) ColorfulPalette {
 }
 
 func GetPalette(ctx context.Context, name string) (ColorfulPalette, bool) {
+	ctx, span := otel.Tracer("my-service").Start(ctx, "GetPalette")
+	defer span.End()
 	switch name {
 	case "RdBu":
 		return makePaletteFromCSV(ctx, paletteReBuCSV), true
