@@ -7,6 +7,7 @@ import (
 	"image/color"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"strconv"
 
@@ -100,6 +101,10 @@ func fib(ctx context.Context, n int) (v int, err error) {
 	}
 	if n < 0 {
 		return 0, fmt.Errorf("got n(%+v) < 0", n)
+	}
+
+	if v := rand.Float32(); v < 0.05 {
+		return 0, fmt.Errorf("got random error(%#v)", v)
 	}
 
 	a, _ := fib(ctx, n-1)
