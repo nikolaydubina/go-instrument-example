@@ -19,7 +19,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
-	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/tools/cover"
 
 	"github.com/nikolaydubina/go-instrument-example/go-cover-treemap/covertreemap"
@@ -27,21 +26,9 @@ import (
 	"github.com/nikolaydubina/go-instrument-example/treemap/render"
 )
 
-var (
-	tracer = otel.GetTracerProvider().Tracer(
-		"github.com/nikolaydubina/go-instrument-example",
-		trace.WithInstrumentationVersion("v0.1.0"),
-		trace.WithSchemaURL(semconv.SchemaURL),
-	)
-)
-
 var grey = color.RGBA{128, 128, 128, 255}
 
-func makeCover(ctx context.Context, width float64, height float64, in io.Reader, out io.Writer) error {
-	// manual instrumentation
-	_, span := tracer.Start(ctx, "makeCover")
-	defer span.End()
-
+func makeCover(ctx context.Context, width float64, height float64, in io.Reader, out io.Writer) (err error) {
 	profiles, err := cover.ParseProfilesFromReader(in)
 	if err != nil {
 		return fmt.Errorf("can not parse file: %w", err)
@@ -107,6 +94,34 @@ func coverHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func fib(ctx context.Context, n int) (v int, err error) {
+	if n == 0 || n == 1 {
+		return 1, nil
+	}
+	if n < 0 {
+		return 0, fmt.Errorf("got n(%+v) < 0", n)
+	}
+
+	a, _ := fib(ctx, n-1)
+	b, _ := fib(ctx, n-2)
+
+	return a + b, nil
+}
+
+func fibHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	n, _ := strconv.Atoi(chi.URLParam(r, "n"))
+	v, err := fib(ctx, n)
+	if err != nil {
+		chirender.Status(r, 400)
+		chirender.JSON(w, r, err.Error())
+		return
+	}
+
+	w.Write([]byte(strconv.Itoa(v)))
+}
+
 func main() {
 	exporter, err := otlptrace.New(
 		context.Background(),
@@ -136,6 +151,7 @@ func main() {
 	)
 
 	router.Post("/cover", coverHandler)
+	router.Get("/fib/{n}", fibHandler)
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
