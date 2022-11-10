@@ -1,6 +1,7 @@
 package covertreemap
 
 import (
+	"context"
 	"strings"
 
 	"github.com/nikolaydubina/go-instrument-example/treemap"
@@ -8,7 +9,7 @@ import (
 
 // RemoveGoFilesTreemapFilter removes .go files from Treemap.
 // Size and heat of parents have to be already imputed.
-func RemoveGoFilesTreemapFilter(tree *treemap.Tree) {
+func RemoveGoFilesTreemapFilter(ctx context.Context, tree *treemap.Tree) {
 	for path := range tree.Nodes {
 		if strings.HasSuffix(path, ".go") {
 			delete(tree.Nodes, path)
@@ -30,7 +31,7 @@ func RemoveGoFilesTreemapFilter(tree *treemap.Tree) {
 
 // AggregateGoFilesTreemapFilter aggregates .go files from Treemap
 // in each parent into single node `*`.
-func AggregateGoFilesTreemapFilter(tree *treemap.Tree) {
+func AggregateGoFilesTreemapFilter(ctx context.Context, tree *treemap.Tree) {
 	// store coverage statement per aggregated node
 	aggcov := make(map[string]float64)
 
@@ -80,7 +81,7 @@ func AggregateGoFilesTreemapFilter(tree *treemap.Tree) {
 }
 
 // CollapseRootsWithoutNameTreemapFilter collapses roots with single child without updating name of parents.
-func CollapseRootsWithoutNameTreemapFilter(tree *treemap.Tree) {
+func CollapseRootsWithoutNameTreemapFilter(ctx context.Context, tree *treemap.Tree) {
 	for path := range tree.Nodes {
 		parent := parent(path)
 		if len(tree.To[parent]) == 1 {

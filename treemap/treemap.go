@@ -1,6 +1,9 @@
 package treemap
 
-import "strings"
+import (
+	"context"
+	"strings"
+)
 
 // for numerical stability
 const minHeatDifferenceForHeatmap float64 = 0.0000001
@@ -19,12 +22,12 @@ type Tree struct {
 	Root  string
 }
 
-func (t Tree) HasHeat() bool {
-	minHeat, maxHeat := t.HeatRange()
+func (t Tree) HasHeat(ctx context.Context) bool {
+	minHeat, maxHeat := t.HeatRange(ctx)
 	return (maxHeat - minHeat) > minHeatDifferenceForHeatmap
 }
 
-func (t Tree) HeatRange() (minHeat float64, maxHeat float64) {
+func (t Tree) HeatRange(ctx context.Context) (minHeat float64, maxHeat float64) {
 	first := true
 	for _, node := range t.Nodes {
 		if !node.HasHeat {
@@ -49,8 +52,8 @@ func (t Tree) HeatRange() (minHeat float64, maxHeat float64) {
 	return minHeat, maxHeat
 }
 
-func (t Tree) NormalizeHeat() {
-	minHeat, maxHeat := t.HeatRange()
+func (t Tree) NormalizeHeat(ctx context.Context) {
+	minHeat, maxHeat := t.HeatRange(ctx)
 
 	if (maxHeat - minHeat) < minHeatDifferenceForHeatmap {
 		return
@@ -73,7 +76,7 @@ func (t Tree) NormalizeHeat() {
 }
 
 // SetNamesFromPaths will update each node to its path leaf as name.
-func SetNamesFromPaths(t *Tree) {
+func SetNamesFromPaths(ctx context.Context, t *Tree) {
 	if t == nil {
 		return
 	}

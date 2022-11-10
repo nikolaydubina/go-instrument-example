@@ -1,20 +1,22 @@
 package treemap
 
+import "context"
+
 // WeightedHeatImputer will make color of parent to weighted sum of colors of its children.
 type WeightedHeatImputer struct {
 	EmptyLeafHeat float64
 }
 
-func (s WeightedHeatImputer) ImputeHeat(t Tree) {
-	s.ImputeHeatNode(t, t.Root)
+func (s WeightedHeatImputer) ImputeHeat(ctx context.Context, t Tree) {
+	s.ImputeHeatNode(ctx, t, t.Root)
 }
 
-func (s WeightedHeatImputer) ImputeHeatNode(t Tree, node string) {
+func (s WeightedHeatImputer) ImputeHeatNode(ctx context.Context, t Tree, node string) {
 	var heats []float64
 	var sizes []float64
 
 	for _, child := range t.To[node] {
-		s.ImputeHeatNode(t, child)
+		s.ImputeHeatNode(ctx, t, child)
 
 		if t.Nodes[child].HasHeat {
 			sizes = append(sizes, t.Nodes[child].Size)

@@ -1,6 +1,7 @@
 package render
 
 import (
+	"context"
 	"image/color"
 
 	"github.com/lucasb-eyer/go-colorful"
@@ -14,11 +15,11 @@ var (
 
 type NoneColorer struct{}
 
-func (s NoneColorer) ColorBox(tree treemap.Tree, node string) color.Color {
+func (s NoneColorer) ColorBox(ctx context.Context, tree treemap.Tree, node string) color.Color {
 	return color.Transparent
 }
 
-func (s NoneColorer) ColorText(tree treemap.Tree, node string) color.Color {
+func (s NoneColorer) ColorText(ctx context.Context, tree treemap.Tree, node string) color.Color {
 	return DarkTextColor
 }
 
@@ -29,16 +30,16 @@ type HeatColorer struct {
 	Palette ColorfulPalette
 }
 
-func (s HeatColorer) ColorBox(tree treemap.Tree, node string) color.Color {
+func (s HeatColorer) ColorBox(ctx context.Context, tree treemap.Tree, node string) color.Color {
 	n, ok := tree.Nodes[node]
 	if !ok || !n.HasHeat {
-		return s.Palette.GetInterpolatedColorFor(0.5)
+		return s.Palette.GetInterpolatedColorFor(ctx, 0.5)
 	}
-	return s.Palette.GetInterpolatedColorFor(n.Heat)
+	return s.Palette.GetInterpolatedColorFor(ctx, n.Heat)
 }
 
-func (s HeatColorer) ColorText(tree treemap.Tree, node string) color.Color {
-	boxColor := s.ColorBox(tree, node).(colorful.Color)
+func (s HeatColorer) ColorText(ctx context.Context, tree treemap.Tree, node string) color.Color {
+	boxColor := s.ColorBox(ctx, tree, node).(colorful.Color)
 	_, _, l := boxColor.Hcl()
 	switch {
 	case l > 0.5:

@@ -1,6 +1,7 @@
 package layout
 
 import (
+	"context"
 	"math"
 	"sort"
 )
@@ -24,10 +25,10 @@ type wrappedArea struct {
 // This function does sanity checks and hardening so that algorithm can work in the wild.
 // Returns boxes in same order as areas.
 // Zero areas will have zero-value box.
-func Squarify(box Box, areas []float64) []Box {
+func Squarify(ctx context.Context, box Box, areas []float64) []Box {
 	// normalize and sort from highest to lowest
 	sortedAreas := make([]wrappedArea, len(areas))
-	for i, s := range normalizeAreas(areas, (box.W * box.H)) {
+	for i, s := range normalizeAreas(ctx, areas, (box.W * box.H)) {
 		sortedAreas[i] = wrappedArea{i: i, area: s}
 	}
 	sort.Slice(sortedAreas, func(i, j int) bool { return sortedAreas[i].area > sortedAreas[j].area })
@@ -45,10 +46,10 @@ func Squarify(box Box, areas []float64) []Box {
 		boxes:     nil,
 		freeSpace: box,
 	}
-	layout.squarify(cleanAreas, nil, math.Min(layout.freeSpace.W, layout.freeSpace.H))
+	layout.squarify(ctx, cleanAreas, nil, math.Min(layout.freeSpace.W, layout.freeSpace.H))
 
 	boxes := layout.boxes
-	cutoffOverflows(box, layout.boxes)
+	cutoffOverflows(ctx, box, layout.boxes)
 
 	// restore ordering
 	res := make([]Box, len(areas))
@@ -65,7 +66,7 @@ func Squarify(box Box, areas []float64) []Box {
 	return res
 }
 
-func normalizeAreas(areas []float64, target float64) []float64 {
+func normalizeAreas(ctx context.Context, areas []float64, target float64) []float64 {
 	var total float64
 	for _, s := range areas {
 		total += s
@@ -89,39 +90,39 @@ type squarifyBoxLayout struct {
 
 // squarify expects normalized areas that add up to free space.
 // areas should not be zero.
-func (l *squarifyBoxLayout) squarify(unassignedAreas []float64, stackAreas []float64, w float64) {
+func (l *squarifyBoxLayout) squarify(ctx context.Context, unassignedAreas []float64, stackAreas []float64, w float64) {
 	if len(unassignedAreas) == 0 {
-		l.stackBoxes(stackAreas)
+		l.stackBoxes(ctx, stackAreas)
 		return
 	}
 
 	if len(stackAreas) == 0 {
-		l.squarify(unassignedAreas[1:], []float64{unassignedAreas[0]}, w)
+		l.squarify(ctx, unassignedAreas[1:], []float64{unassignedAreas[0]}, w)
 		return
 	}
 
 	c := unassignedAreas[0]
-	if stackc := append(stackAreas, c); highestAspectRatio(stackAreas, w) > highestAspectRatio(stackc, w) {
+	if stackc := append(stackAreas, c); highestAspectRatio(ctx, stackAreas, w) > highestAspectRatio(ctx, stackc, w) {
 		// aspect ratio improves, add it to current stack
-		l.squarify(unassignedAreas[1:], stackc, w)
+		l.squarify(ctx, unassignedAreas[1:], stackc, w)
 	} else {
 		// aspect ratio does not improve
-		l.stackBoxes(stackAreas)
-		l.squarify(unassignedAreas, nil, math.Min(l.freeSpace.W, l.freeSpace.H))
+		l.stackBoxes(ctx, stackAreas)
+		l.squarify(ctx, unassignedAreas, nil, math.Min(l.freeSpace.W, l.freeSpace.H))
 	}
 }
 
 // stackBoxes makes new boxes accordingly to areas and fix them into freeSpacelayout within bounding box
-func (l *squarifyBoxLayout) stackBoxes(stackAreas []float64) {
+func (l *squarifyBoxLayout) stackBoxes(ctx context.Context, stackAreas []float64) {
 	if l.freeSpace.W < l.freeSpace.H {
-		l.stackBoxesHorizontal(stackAreas)
+		l.stackBoxesHorizontal(ctx, stackAreas)
 	} else {
-		l.stackBoxesVertical(stackAreas)
+		l.stackBoxesVertical(ctx, stackAreas)
 	}
 }
 
 // stackBoxesVertical takes vertical chunk of free space of bounding box and partitiones it into areas
-func (l *squarifyBoxLayout) stackBoxesVertical(areas []float64) {
+func (l *squarifyBoxLayout) stackBoxesVertical(ctx context.Context, areas []float64) {
 	if len(areas) == 0 {
 		return
 	}
@@ -163,7 +164,7 @@ func (l *squarifyBoxLayout) stackBoxesVertical(areas []float64) {
 }
 
 // stackBoxesHorizontal takes horizontal chunk of free space of bounding box and partitiones it into areas
-func (l *squarifyBoxLayout) stackBoxesHorizontal(areas []float64) {
+func (l *squarifyBoxLayout) stackBoxesHorizontal(ctx context.Context, areas []float64) {
 	if len(areas) == 0 {
 		return
 	}
@@ -205,7 +206,7 @@ func (l *squarifyBoxLayout) stackBoxesHorizontal(areas []float64) {
 }
 
 // highestAspectRatio of a list of rectangles's areas, given the length of the side along which they are to be laid out
-func highestAspectRatio(areas []float64, w float64) float64 {
+func highestAspectRatio(ctx context.Context, areas []float64, w float64) float64 {
 	var minArea, maxArea, totalArea float64
 	for i, s := range areas {
 		totalArea += s
@@ -225,7 +226,7 @@ func highestAspectRatio(areas []float64, w float64) float64 {
 
 // cutoffOverflows will set boxes that overflow to fit into bounding box.
 // This is useful for numerical stability on the borders.
-func cutoffOverflows(boundingBox Box, boxes []Box) {
+func cutoffOverflows(ctx context.Context, boundingBox Box, boxes []Box) {
 	maxX := boundingBox.X + boundingBox.W
 	maxY := boundingBox.Y + boundingBox.H
 

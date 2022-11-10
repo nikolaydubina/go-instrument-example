@@ -1,6 +1,7 @@
 package covertreemap
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -27,7 +28,7 @@ func NewCoverageTreemapBuilder(
 
 // CoverageTreemapFromProfiles from profiles.
 // Note, we should not normalize heat since go coverage already reports 0~100%.
-func (s CoverageTreemapBuilder) CoverageTreemapFromProfiles(profiles []*cover.Profile) (*treemap.Tree, error) {
+func (s CoverageTreemapBuilder) CoverageTreemapFromProfiles(ctx context.Context, profiles []*cover.Profile) (*treemap.Tree, error) {
 	if len(profiles) == 0 {
 		return nil, errors.New("no profiles passed")
 	}
@@ -50,7 +51,7 @@ func (s CoverageTreemapBuilder) CoverageTreemapFromProfiles(profiles []*cover.Pr
 
 		var size int = 1
 		if s.countStatements {
-			size = numStatements(profile)
+			size = numStatements(ctx, profile)
 			if size == 0 {
 				// fallback
 				size = 1
@@ -63,7 +64,7 @@ func (s CoverageTreemapBuilder) CoverageTreemapFromProfiles(profiles []*cover.Pr
 		tree.Nodes[profile.FileName] = treemap.Node{
 			Path:    profile.FileName,
 			Size:    float64(size),
-			Heat:    percentCovered(profile),
+			Heat:    percentCovered(ctx, profile),
 			HasHeat: true,
 		}
 
@@ -120,7 +121,7 @@ func unique(a []string) []string {
 // This is based on official go tool.
 // Returns value in range 0~1
 // Official reference: https://github.com/golang/go/blob/master/src/cmd/cover/html.go#L97
-func percentCovered(p *cover.Profile) float64 {
+func percentCovered(ctx context.Context, p *cover.Profile) float64 {
 	var total, covered int64
 	for _, b := range p.Blocks {
 		total += int64(b.NumStmt)
@@ -134,7 +135,7 @@ func percentCovered(p *cover.Profile) float64 {
 	return float64(covered) / float64(total)
 }
 
-func numStatements(p *cover.Profile) int {
+func numStatements(ctx context.Context, p *cover.Profile) int {
 	var total int
 	for _, b := range p.Blocks {
 		total += b.NumStmt

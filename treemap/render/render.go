@@ -1,6 +1,7 @@
 package render
 
 import (
+	"context"
 	"image/color"
 
 	"github.com/nikolaydubina/go-instrument-example/treemap"
@@ -46,8 +47,8 @@ func (f UIBox) IsEmpty() bool {
 }
 
 type Colorer interface {
-	ColorBox(tree treemap.Tree, node string) color.Color
-	ColorText(tree treemap.Tree, node string) color.Color
+	ColorBox(ctx context.Context, tree treemap.Tree, node string) color.Color
+	ColorText(ctx context.Context, tree treemap.Tree, node string) color.Color
 }
 
 type UITreeMapBuilder struct {
@@ -55,7 +56,7 @@ type UITreeMapBuilder struct {
 	BorderColor color.Color
 }
 
-func (s UITreeMapBuilder) NewUITreeMap(tree treemap.Tree, w, h, margin, padding, paddingRoot float64) UIBox {
+func (s UITreeMapBuilder) NewUITreeMap(ctx context.Context, tree treemap.Tree, w, h, margin, padding, paddingRoot float64) UIBox {
 	t := UIBox{
 		X:           0 + paddingRoot,
 		Y:           0 + paddingRoot,
@@ -66,13 +67,13 @@ func (s UITreeMapBuilder) NewUITreeMap(tree treemap.Tree, w, h, margin, padding,
 	}
 
 	t.Children = []UIBox{
-		s.NewUIBox(tree.Root, tree, t.X, t.Y, t.W, t.H, margin, padding),
+		s.NewUIBox(ctx, tree.Root, tree, t.X, t.Y, t.W, t.H, margin, padding),
 	}
 
 	return t
 }
 
-func (s UITreeMapBuilder) NewUIBox(node string, tree treemap.Tree, x, y, w, h, margin float64, padding float64) UIBox {
+func (s UITreeMapBuilder) NewUIBox(ctx context.Context, node string, tree treemap.Tree, x, y, w, h, margin float64, padding float64) UIBox {
 	if (w <= (2 * padding)) || (h <= (2 * padding)) || w < tooSmallBoxWidth || h < tooSmallBoxHeight {
 		// too small, do not render
 		return UIBox{}
@@ -83,7 +84,7 @@ func (s UITreeMapBuilder) NewUIBox(node string, tree treemap.Tree, x, y, w, h, m
 		Y:           y + margin,
 		W:           w - (2 * margin),
 		H:           h - (2 * margin),
-		Color:       s.Colorer.ColorBox(tree, node),
+		Color:       s.Colorer.ColorBox(ctx, tree, node),
 		BorderColor: s.BorderColor,
 	}
 
@@ -93,7 +94,7 @@ func (s UITreeMapBuilder) NewUIBox(node string, tree treemap.Tree, x, y, w, h, m
 		// margin here and padding to account for children
 		w := t.W - (2 * padding) - (2 * margin)
 		h := t.H - (2 * padding) - (2 * margin) - (2 * textMarginH)
-		if scale, th := fitText(title, fontSize, w); scale > 0 && th > 0 && th < h {
+		if scale, th := fitText(ctx, title, fontSize, w); scale > 0 && th > 0 && th < h {
 			textHeight = th
 			// if enough space for text, then add
 			t.Title = &UIText{
@@ -103,7 +104,7 @@ func (s UITreeMapBuilder) NewUIBox(node string, tree treemap.Tree, x, y, w, h, m
 				W:     w,
 				H:     textHeight,
 				Scale: scale,
-				Color: s.Colorer.ColorText(tree, node),
+				Color: s.Colorer.ColorText(ctx, tree, node),
 			}
 		}
 	}
@@ -123,13 +124,14 @@ func (s UITreeMapBuilder) NewUIBox(node string, tree treemap.Tree, x, y, w, h, m
 		W: t.W - (2 * padding),
 		H: t.H - (2 * padding) - textHeight - (2 * textMarginH),
 	}
-	boxes := layout.Squarify(childrenContainer, areas)
+	boxes := layout.Squarify(ctx, childrenContainer, areas)
 
 	for i, toPath := range tree.To[node] {
 		if boxes[i] == layout.NilBox {
 			continue
 		}
 		box := s.NewUIBox(
+			ctx,
 			toPath,
 			tree,
 			boxes[i].X,
@@ -160,7 +162,7 @@ func nodeSize(tree treemap.Tree, node string) float64 {
 }
 
 // compute scale to fit worst dimension
-func fitText(text string, fontSize int, W float64) (scale float64, h float64) {
+func fitText(ctx context.Context, text string, fontSize int, W float64) (scale float64, h float64) {
 	w := textWidth(text, float64(fontSize))
 	h = textHeight(text, float64(fontSize))
 

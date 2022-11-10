@@ -1,6 +1,7 @@
 package render
 
 import (
+	"context"
 	_ "embed"
 	"image/color"
 	"log"
@@ -21,7 +22,7 @@ type ColorfulPalette []struct {
 // This is the meat of the gradient computation. It returns a HCL-blend between
 // the two colors around `t`.
 // Note: It relies heavily on the fact that the gradient keypoints are sorted.
-func (gt ColorfulPalette) GetInterpolatedColorFor(t float64) color.Color {
+func (gt ColorfulPalette) GetInterpolatedColorFor(ctx context.Context, t float64) color.Color {
 	for i := 0; i < len(gt)-1; i++ {
 		c1 := gt[i]
 		c2 := gt[i+1]
@@ -42,7 +43,7 @@ var paletteReBuCSV string
 //go:embed palettes/RdYlGn.csv
 var paletteRdYlGnCSV string
 
-func makePaletteFromCSV(csv string) ColorfulPalette {
+func makePaletteFromCSV(ctx context.Context, csv string) ColorfulPalette {
 	rows := strings.Split(csv, "\n")
 	palette := make(ColorfulPalette, len(rows))
 
@@ -69,12 +70,12 @@ func makePaletteFromCSV(csv string) ColorfulPalette {
 	return palette
 }
 
-func GetPalette(name string) (ColorfulPalette, bool) {
+func GetPalette(ctx context.Context, name string) (ColorfulPalette, bool) {
 	switch name {
 	case "RdBu":
-		return makePaletteFromCSV(paletteReBuCSV), true
+		return makePaletteFromCSV(ctx, paletteReBuCSV), true
 	case "RdYlGn":
-		return makePaletteFromCSV(paletteRdYlGnCSV), true
+		return makePaletteFromCSV(ctx, paletteRdYlGnCSV), true
 	default:
 		return nil, false
 	}

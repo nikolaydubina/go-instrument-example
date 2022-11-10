@@ -1,13 +1,14 @@
 package render
 
 import (
+	"context"
 	"fmt"
 	"image/color"
 )
 
 type SVGRenderer struct{}
 
-func (r SVGRenderer) Render(root UIBox, w, h float64) []byte {
+func (r SVGRenderer) Render(ctx context.Context, root UIBox, w, h float64) []byte {
 	if !root.IsRoot {
 		return nil
 	}
@@ -29,7 +30,7 @@ func (r SVGRenderer) Render(root UIBox, w, h float64) []byte {
 	for len(que) > 0 {
 		q, que = que[0], que[1:]
 		que = append(que, q.Children...)
-		s += BoxSVG(q) + "\n"
+		s += BoxSVG(ctx, q) + "\n"
 	}
 
 	s += `</svg>`
@@ -37,7 +38,7 @@ func (r SVGRenderer) Render(root UIBox, w, h float64) []byte {
 	return []byte(s)
 }
 
-func BoxSVG(q UIBox) string {
+func BoxSVG(ctx context.Context, q UIBox) string {
 	if q.IsInvisible {
 		return ""
 	}
@@ -69,11 +70,11 @@ func BoxSVG(q UIBox) string {
 		q.W,
 		q.H,
 		fmt.Sprintf("fill: rgba(%d, %d, %d, %d);opacity:1;fill-opacity:1;stroke:rgba(%d,%d,%d,%d);stroke-width:1px;stroke-opacity:1;", r, g, b, a, br, bg, bb, ba),
-		TextSVG(q.Title),
+		TextSVG(ctx, q.Title),
 	)
 }
 
-func TextSVG(t *UIText) string {
+func TextSVG(ctx context.Context, t *UIText) string {
 	if t == nil {
 		return ""
 	}

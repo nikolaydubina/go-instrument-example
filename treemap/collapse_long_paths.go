@@ -1,20 +1,23 @@
 package treemap
 
-import "strings"
+import (
+	"context"
+	"strings"
+)
 
 // CollapseLongPaths will collapse all long chains in tree.
-func CollapseLongPaths(t *Tree) {
+func CollapseLongPaths(ctx context.Context, t *Tree) {
 	if t == nil {
 		return
 	}
-	CollapseLongPathsFromNode(t, t.Root)
+	CollapseLongPathsFromNode(ctx, t, t.Root)
 }
 
 // CollapseLongPathsFromNode will collapse current node into children as long as it has single child.
 // Will set name of this node to joined path from roots.
 // Will set size and heat to this child's size and heat.
 // Expecting Name containing either single value for current node.
-func CollapseLongPathsFromNode(t *Tree, nodeName string) {
+func CollapseLongPathsFromNode(ctx context.Context, t *Tree, nodeName string) {
 	if t == nil {
 		return
 	}
@@ -58,6 +61,6 @@ func CollapseLongPathsFromNode(t *Tree, nodeName string) {
 
 	// recursively collapse
 	for _, node := range t.To[nodeName] {
-		CollapseLongPathsFromNode(t, node)
+		CollapseLongPathsFromNode(ctx, t, node)
 	}
 }

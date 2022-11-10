@@ -1,6 +1,7 @@
 package render
 
 import (
+	"context"
 	"image/color"
 	"math"
 
@@ -23,9 +24,9 @@ type TreeHueColorer struct {
 	DeltaL float64            // tolerance for approximate color
 }
 
-func (s TreeHueColorer) ColorBox(tree treemap.Tree, node string) color.Color {
+func (s TreeHueColorer) ColorBox(ctx context.Context, tree treemap.Tree, node string) color.Color {
 	if len(s.Hues) == 0 {
-		for k, v := range TreeHues(tree, s.Offset) {
+		for k, v := range TreeHues(ctx, tree, s.Offset) {
 			s.Hues[k] = v
 		}
 	}
@@ -48,8 +49,8 @@ func (s TreeHueColorer) ColorBox(tree treemap.Tree, node string) color.Color {
 	return palette[0]
 }
 
-func (s TreeHueColorer) ColorText(tree treemap.Tree, node string) color.Color {
-	boxColor := s.ColorBox(tree, node).(colorful.Color)
+func (s TreeHueColorer) ColorText(ctx context.Context, tree treemap.Tree, node string) color.Color {
+	boxColor := s.ColorBox(ctx, tree, node).(colorful.Color)
 	_, _, l := boxColor.Hcl()
 	switch {
 	case l > 0.5:
@@ -59,7 +60,7 @@ func (s TreeHueColorer) ColorText(tree treemap.Tree, node string) color.Color {
 	}
 }
 
-func TreeHues(tree treemap.Tree, offset float64) map[string]float64 {
+func TreeHues(ctx context.Context, tree treemap.Tree, offset float64) map[string]float64 {
 	ranges := map[string][2]float64{tree.Root: {offset, 360 + offset}}
 
 	que := []string{tree.Root}

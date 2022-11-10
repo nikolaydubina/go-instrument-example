@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"context"
 	"encoding/csv"
 	"errors"
 	"fmt"
@@ -17,13 +18,13 @@ import (
 // TODO: policies for duplicates
 type CSVTreeParser struct{}
 
-func (s CSVTreeParser) ParseString(in string) (*treemap.Tree, error) {
-	nodes, err := parseNodes(in)
+func (s CSVTreeParser) ParseString(ctx context.Context, in string) (tree *treemap.Tree, err error) {
+	nodes, err := parseNodes(ctx, in)
 	if err != nil {
 		return nil, fmt.Errorf("can not parse nodes: %w", err)
 	}
 
-	tree, err := makeTree(nodes)
+	tree, err = makeTree(ctx, nodes)
 	if err != nil {
 		return nil, fmt.Errorf("can not make tree: %w", err)
 	}
@@ -31,7 +32,7 @@ func (s CSVTreeParser) ParseString(in string) (*treemap.Tree, error) {
 	return tree, nil
 }
 
-func parseNodes(in string) ([]treemap.Node, error) {
+func parseNodes(ctx context.Context, in string) (node []treemap.Node, err error) {
 	var nodes []treemap.Node
 	r := csv.NewReader(strings.NewReader(in))
 	for {
@@ -73,7 +74,7 @@ func parseNodes(in string) ([]treemap.Node, error) {
 
 // If node is in path, but not present, then it will be in To but not will have entry in Nodes.
 // This is not terribly efficient, but should do its job for small graphs.
-func makeTree(nodes []treemap.Node) (*treemap.Tree, error) {
+func makeTree(ctx context.Context, nodes []treemap.Node) (*treemap.Tree, error) {
 	tree := treemap.Tree{
 		Nodes: map[string]treemap.Node{},
 		To:    map[string][]string{},

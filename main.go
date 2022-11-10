@@ -35,20 +35,20 @@ func makeCover(ctx context.Context, width float64, height float64, in io.Reader,
 	}
 
 	treemapBuilder := covertreemap.NewCoverageTreemapBuilder(true)
-	tree, err := treemapBuilder.CoverageTreemapFromProfiles(profiles)
+	tree, err := treemapBuilder.CoverageTreemapFromProfiles(ctx, profiles)
 	if err != nil {
 		return fmt.Errorf("can not build tree: %w", err)
 	}
 
 	sizeImputer := treemap.SumSizeImputer{EmptyLeafSize: 1}
-	sizeImputer.ImputeSize(*tree)
-	treemap.SetNamesFromPaths(tree)
-	treemap.CollapseLongPaths(tree)
+	sizeImputer.ImputeSize(ctx, *tree)
+	treemap.SetNamesFromPaths(ctx, tree)
+	treemap.CollapseLongPaths(ctx, tree)
 
 	heatImputer := treemap.WeightedHeatImputer{EmptyLeafHeat: 0.5}
-	heatImputer.ImputeHeat(*tree)
+	heatImputer.ImputeHeat(ctx, *tree)
 
-	palette, ok := render.GetPalette("RdYlGn")
+	palette, ok := render.GetPalette(ctx, "RdYlGn")
 	if !ok {
 		return errors.New("can not get palette")
 	}
@@ -56,10 +56,10 @@ func makeCover(ctx context.Context, width float64, height float64, in io.Reader,
 		Colorer:     render.HeatColorer{Palette: palette},
 		BorderColor: grey,
 	}
-	spec := uiBuilder.NewUITreeMap(*tree, width, height, 4, 4, 16)
+	spec := uiBuilder.NewUITreeMap(ctx, *tree, width, height, 4, 4, 16)
 	renderer := render.SVGRenderer{}
 
-	out.Write(renderer.Render(spec, width, height))
+	out.Write(renderer.Render(ctx, spec, width, height))
 	return nil
 }
 
