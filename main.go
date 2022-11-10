@@ -95,7 +95,7 @@ func coverHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func fib(ctx context.Context, n int) (v int, err error) {
+func fib(ctx context.Context, n int, makeErr bool) (v int, err error) {
 	if n == 0 || n == 1 {
 		return 1, nil
 	}
@@ -103,12 +103,14 @@ func fib(ctx context.Context, n int) (v int, err error) {
 		return 0, fmt.Errorf("got n(%+v) < 0", n)
 	}
 
-	if v := rand.Float32(); v < 0.05 {
-		return 0, fmt.Errorf("got random error(%#v)", v)
+	if makeErr {
+		if v := rand.Float32(); v < 0.05 {
+			return 0, fmt.Errorf("got random error(%#v)", v)
+		}
 	}
 
-	a, _ := fib(ctx, n-1)
-	b, _ := fib(ctx, n-2)
+	a, _ := fib(ctx, n-1, makeErr)
+	b, _ := fib(ctx, n-2, makeErr)
 
 	return a + b, nil
 }
@@ -116,8 +118,10 @@ func fib(ctx context.Context, n int) (v int, err error) {
 func fibHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	makeErr := r.URL.Query().Get("error") != ""
+
 	n, _ := strconv.Atoi(chi.URLParam(r, "n"))
-	v, err := fib(ctx, n)
+	v, err := fib(ctx, n, makeErr)
 	if err != nil {
 		chirender.Status(r, 400)
 		chirender.JSON(w, r, err.Error())
